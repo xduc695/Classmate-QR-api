@@ -1,4 +1,5 @@
-﻿using ClassmateQRapi.DTOs;
+﻿using ClassMate.Api.DTOs;
+using ClassmateQRapi.DTOs;
 using ClassmateQRapi.Entities;
 using ClassmateQRapi.Services;
 using Microsoft.AspNetCore.Authorization;
@@ -175,6 +176,99 @@ namespace ClassmateQRapi.Controllers
 
             if (user == null)
                 return Unauthorized(new { message = "User not found" });
+
+            return Ok(new
+            {
+                id = user.Id,
+                userName = user.UserName,
+                fullName = user.FullName,
+                email = user.Email,
+                avatarUrl = user.AvatarUrl,
+                createdAt = user.CreatedAt
+            });
+        }
+
+        [Authorize]
+        [HttpPut("profile")]
+        public async Task<IActionResult> UpdateProfile([FromForm] UpdateProfileRequest request)
+        {
+            if (!ModelState.IsValid)
+                return BadRequest(ModelState);
+
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (string.IsNullOrEmpty(userId))
+                return Unauthorized(new { message = "No user id in token" });
+
+            var user = await _userManager.FindByIdAsync(userId);
+            if (user == null)
+                return Unauthorized(new { message = "User not found" });
+
+            // ======================
+            //  ĐỔI USERNAME
+            // ======================
+            if (!string.IsNullOrWhiteSpace(request.UserName) &&
+                !string.Equals(request.UserName, user.UserName, StringComparison.OrdinalIgnoreCase))
+            {
+                var usernameExist = await _userManager.FindByNameAsync(request.UserName);
+                if (usernameExist != null && usernameExist.Id != user.Id)
+                {
+                    return BadRequest(new { message = "Username already exists" });
+                }
+                user.UserName = request.UserName;
+            }
+
+            // ======================
+            //  ĐỔI EMAIL
+            // ======================
+            if (!string.IsNullOrWhiteSpace(request.Email) &&
+                !string.Equals(request.Email, user.Email, StringComparison.OrdinalIgnoreCase))
+            {
+                var emailExist = await _userManager.FindByEmailAsync(request.Email);
+                if (emailExist != null && emailExist.Id != user.Id)
+                {
+                    return BadRequest(new { message = "Email already in use" });
+                }
+                user.Email = request.Email;
+            }
+
+            // ======================
+            //  ĐỔI FULLNAME
+            // ======================
+            user.FullName = request.FullName;
+
+            // ======================
+            //  ĐỔI AVATAR (NẾU CÓ)
+            // ======================
+            if (request.Avatar != null && request.Avatar.Length > 0)
+            {
+                var avatarsFolder = Path.Combine(_env.ContentRootPath, "Avatars");
+                Directory.CreateDirectory(avatarsFolder);
+
+                var ext = Path.GetExtension(request.Avatar.FileName);
+                if (string.IsNullOrEmpty(ext)) ext = ".jpg";
+
+                var fileName = $"{user.Id}{ext}";
+                var filePath = Path.Combine(avatarsFolder, fileName);
+
+                using (var stream = new FileStream(filePath, FileMode.Create))
+                {
+                    await request.Avatar.CopyToAsync(stream);
+                }
+
+                user.AvatarUrl = $"/avatars/{fileName}";
+            }
+
+            // Lưu lại DB
+            var result = await _userManager.UpdateAsync(user);
+
+            if (!result.Succeeded)
+            {
+                return BadRequest(new
+                {
+                    message = "Update profile failed",
+                    errors = result.Errors.Select(e => e.Description)
+                });
+            }
 
             return Ok(new
             {
