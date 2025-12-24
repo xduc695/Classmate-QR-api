@@ -6,6 +6,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
+using Microsoft.EntityFrameworkCore;
 using System.Security.Claims;
 
 namespace ClassmateQRapi.Controllers
@@ -279,6 +280,64 @@ namespace ClassmateQRapi.Controllers
                 avatarUrl = user.AvatarUrl,
                 createdAt = user.CreatedAt
             });
+        }
+        [Authorize(Roles = "Admin")]
+        [HttpGet]
+        public async Task<IActionResult> GetAllUsers()
+        {
+            var users = await _userManager.Users.ToListAsync();
+
+            var result = new List<object>();
+
+            foreach (var u in users)
+            {
+                var roles = await _userManager.GetRolesAsync(u);
+                result.Add(new
+                {
+                    id = u.Id,
+                    userName = u.UserName,
+                    fullName = u.FullName,
+                    email = u.Email,
+                    roles = roles
+                });
+            }
+
+            return Ok(result);
+        }
+
+        // ==========================
+        //  XOÁ TÀI KHOẢN
+        // ==========================
+        [Authorize(Roles = "Admin")]
+        [HttpDelete("{userId}")]
+        public async Task<IActionResult> DeleteUser(string userId)
+        {
+            var user = await _userManager.FindByIdAsync(userId);
+            if (user == null)
+                return NotFound(new { message = "User not found" });
+
+            var currentAdminId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+
+            // Không cho tự xoá chính mình (cho an toàn)
+            if (user.Id == currentAdminId)
+            {
+                return BadRequest(new { message = "You cannot delete your own account" });
+            }
+
+            // (Tuỳ bạn, nếu muốn: chặn xoá Admin khác, chỉ cho đổi role thay vì xoá
+            // ở đây mình cho xoá luôn cho đơn giản)
+
+            var result = await _userManager.DeleteAsync(user);
+            if (!result.Succeeded)
+            {
+                return BadRequest(new
+                {
+                    message = "Delete user failed",
+                    errors = result.Errors.Select(e => e.Description)
+                });
+            }
+
+            return Ok(new { message = "User deleted successfully", userId = userId });
         }
     }
 }
