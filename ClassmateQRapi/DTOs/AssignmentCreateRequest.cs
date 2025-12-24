@@ -13,7 +13,7 @@ namespace ClassMate.Api.DTOs
         [Required]
         public DateTime DueDate { get; set; }
 
-        public IFormFile? Attachment { get; set; }
+        public List<IFormFile>? Attachments { get; set; } // Hỗ trợ nhiều file
     }
 
     public class AssignmentResponse
@@ -21,9 +21,15 @@ namespace ClassMate.Api.DTOs
         public int Id { get; set; }
         public string Title { get; set; } = null!;
         public string Content { get; set; } = null!;
-        public string? AttachmentUrl { get; set; }
+        public List<FileDto> Files { get; set; } = new List<FileDto>();
         public DateTime DueDate { get; set; }
         public DateTime CreatedAt { get; set; }
         public int ClassSectionId { get; set; }
+    }
+    public class FileDto
+    {
+        public int Id { get; set; }
+        public string FileName { get; set; } = null!;
+        public string FileUrl { get; set; } = null!;
     }
 }

@@ -21,7 +21,8 @@ namespace ClassmateQRapi.Data
         public DbSet<Assignment> Assignments { get; set; } = null!;
         public DbSet<Submission> Submissions { get; set; } = null!;
         public DbSet<CourseResource> CourseResources { get; set; } = null!;
-
+        public DbSet<AssignmentFile> AssignmentFiles { get; set; } = null!;
+        public DbSet<SubmissionFile> SubmissionFiles { get; set; } = null!;
         protected override void OnModelCreating(ModelBuilder builder)
         {
             base.OnModelCreating(builder);
@@ -73,7 +74,19 @@ namespace ClassmateQRapi.Data
     .WithMany(c => c.Resources)
     .HasForeignKey(r => r.CourseId)
     .OnDelete(DeleteBehavior.Cascade);
+            // Khi xóa Assignment -> Xóa hết AssignmentFiles liên quan
+            builder.Entity<AssignmentFile>()
+                .HasOne(af => af.Assignment)
+                .WithMany(a => a.AssignmentFiles)
+                .HasForeignKey(af => af.AssignmentId)
+                .OnDelete(DeleteBehavior.Cascade);
 
+            // Khi xóa Submission -> Xóa hết SubmissionFiles liên quan
+            builder.Entity<SubmissionFile>()
+                .HasOne(sf => sf.Submission)
+                .WithMany(s => s.SubmissionFiles)
+                .HasForeignKey(sf => sf.SubmissionId)
+                .OnDelete(DeleteBehavior.Cascade);
 
         }
 

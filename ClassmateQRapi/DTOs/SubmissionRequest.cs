@@ -6,7 +6,7 @@ namespace ClassMate.Api.DTOs
     public class SubmissionRequest
     {
         public string? AnswerText { get; set; }
-        public IFormFile? File { get; set; }
+        public List<IFormFile>? Files { get; set; } // Hỗ trợ nhiều file
     }
 
     public class GradeRequest

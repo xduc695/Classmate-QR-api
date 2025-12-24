@@ -10,7 +10,7 @@
         public string UserId { get; set; } = null!;
         public AppUser User { get; set; } = null!;
 
-        public string? FileUrl { get; set; }  // File bài nộp
+        public ICollection<SubmissionFile> SubmissionFiles { get; set; } = new List<SubmissionFile>();
         public string? AnswerText { get; set; } // Nội dung trả lời NLHS
 
         public double? Score { get; set; }
