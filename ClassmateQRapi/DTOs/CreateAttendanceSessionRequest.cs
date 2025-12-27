@@ -7,17 +7,18 @@ namespace ClassMate.Api.DTOs
         [Required]
         public int ClassSectionId { get; set; }
 
-        // Thời gian bắt đầu, kết thúc buổi điểm danh (UTC hoặc local, tự quy ước)
-        [Required]
-        public DateTime StartTime { get; set; }
+        public int Minutes { get; set; }
 
-        [Required]
-        public DateTime EndTime { get; set; }
+        public double Latitude { get; set; }
+        public double Longitude { get; set; }
     }
 
     public class CheckInRequest
     {
         [Required]
         public string Code { get; set; } = null!;
+
+        public double Latitude { get; set; }
+        public double Longitude { get; set; }
     }
 }

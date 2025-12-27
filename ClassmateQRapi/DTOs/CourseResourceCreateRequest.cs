@@ -9,7 +9,7 @@ namespace ClassMate.Api.DTOs
         public string Title { get; set; } = null!;
         public string? Description { get; set; }
 
-        public IFormFile? File { get; set; }
+        public List<IFormFile>? Files { get; set; } // Nhiều file
         public string? LinkUrl { get; set; }
     }
 
@@ -18,7 +18,7 @@ namespace ClassMate.Api.DTOs
         public int Id { get; set; }
         public string Title { get; set; } = null!;
         public string? Description { get; set; }
-        public string? FileUrl { get; set; }
+        public List<FileDto> Files { get; set; } = new();
         public string? LinkUrl { get; set; }
         public DateTime CreatedAt { get; set; }
     }
