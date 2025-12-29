@@ -23,6 +23,7 @@ namespace ClassmateQRapi.Data
         public DbSet<CourseResource> CourseResources { get; set; } = null!;
         public DbSet<AssignmentFile> AssignmentFiles { get; set; } = null!;
         public DbSet<SubmissionFile> SubmissionFiles { get; set; } = null!;
+        public DbSet<CourseResourceFile> CourseResourceFiles { get; set; } = null!;
         protected override void OnModelCreating(ModelBuilder builder)
         {
             base.OnModelCreating(builder);
@@ -87,6 +88,11 @@ namespace ClassmateQRapi.Data
                 .WithMany(s => s.SubmissionFiles)
                 .HasForeignKey(sf => sf.SubmissionId)
                 .OnDelete(DeleteBehavior.Cascade);
+            builder.Entity<CourseResourceFile>()
+       .HasOne(rf => rf.CourseResource)
+       .WithMany(r => r.ResourceFiles)
+       .HasForeignKey(rf => rf.CourseResourceId)
+       .OnDelete(DeleteBehavior.Cascade);
 
         }
 

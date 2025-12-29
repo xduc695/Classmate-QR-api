@@ -29,15 +29,23 @@ namespace ClassmateQRapi.Controllers
             var cls = await _context.ClassSections.FindAsync(request.ClassSectionId);
             if (cls == null) return BadRequest(new { message = "ClassSection not found" });
 
-            // tạo code ngẫu nhiên (có thể dùng GUID)
             var code = Guid.NewGuid().ToString("N").Substring(0, 8).ToUpperInvariant();
+
+            //  SỬA LOGIC THỜI GIAN TẠI ĐÂY
+            // Lấy giờ hiện tại (Server tự quyết định, không tin tưởng Client)
+            var now = DateTime.UtcNow;
 
             var session = new AttendanceSession
             {
                 ClassSectionId = request.ClassSectionId,
-                StartTime = request.StartTime,
-                EndTime = request.EndTime,
-                Code = code
+
+                // Server tự tính toán thời gian
+                StartTime = now,
+                EndTime = now.AddMinutes(request.Minutes), // Cộng số phút vào giờ hiện tại
+
+                Code = code,
+                Latitude = request.Latitude,
+                Longitude = request.Longitude
             };
 
             _context.AttendanceSessions.Add(session);
@@ -49,7 +57,7 @@ namespace ClassmateQRapi.Controllers
                 session.ClassSectionId,
                 session.StartTime,
                 session.EndTime,
-                session.Code // frontend lấy code này render QR
+                session.Code
             });
         }
 
@@ -90,15 +98,42 @@ namespace ClassmateQRapi.Controllers
             {
                 AttendanceSessionId = session.Id,
                 UserId = userId,
-                CheckedInAt = now
+                CheckedInAt = now,
+
+                Latitude = request.Latitude,
+                Longitude = request.Longitude
             };
 
             _context.AttendanceRecords.Add(record);
             await _context.SaveChangesAsync();
-
-            return Ok(new { message = "Check-in success" });
+            // TÍNH KHOẢNG CÁCH TỪ ĐIỂM DANH ĐẾN VỊ TRÍ CỦA GIẢNG VIÊN
+            double finalDistance = Math.Round(CalculateDistance(session.Latitude, session.Longitude, request.Latitude, request.Longitude), 1);
+            return Ok(new
+            {
+                message = "Check-in success",
+                distance = finalDistance
+            });
         }
+        //hàm tính khoảng cách giữa 2 điểm (lat1, lon1) và (lat2, lon2) theo đơn vị km
+        private double CalculateDistance(double lat1, double lon1, double lat2, double lon2)
+        {
+            // Bán kính trái đất xấp xỉ 6371 km = 6371000 mét
+            double R = 6371000;
 
+            // Chuyển đổi độ sang radian
+            double dLat = (lat2 - lat1) * (Math.PI / 180);
+            double dLon = (lon2 - lon1) * (Math.PI / 180);
+
+            // Áp dụng công thức
+            double a = Math.Sin(dLat / 2) * Math.Sin(dLat / 2) +
+                       Math.Cos(lat1 * (Math.PI / 180)) * Math.Cos(lat2 * (Math.PI / 180)) *
+                       Math.Sin(dLon / 2) * Math.Sin(dLon / 2);
+
+            double c = 2 * Math.Atan2(Math.Sqrt(a), Math.Sqrt(1 - a));
+
+            // Trả về khoảng cách
+            return R * c;
+        }
         // Giảng viên xem lịch sử điểm danh 1 buổi
         [Authorize(Roles = "Teacher,Admin")]
         [HttpGet("sessions/{sessionId:int}/records")]
@@ -118,8 +153,22 @@ namespace ClassmateQRapi.Controllers
                     r.UserId,
                     r.User.FullName,
                     r.User.UserName,
-                    r.CheckedInAt
+                    r.CheckedInAt,
+                    r.Latitude,
+                    r.Longitude
                 }).ToListAsync();
+            //  TÍNH KHOẢNG CÁCH NGAY TẠI SERVER ĐỂ GỬI VỀ FRONTEND DỄ HIỂN THỊ
+            var resultRecords = records.Select(r => new
+            {
+                r.UserId,
+                r.FullName,
+                r.UserName,
+                r.CheckedInAt,
+                r.Latitude,
+                r.Longitude,
+                // Tính khoảng cách từ chỗ SV ngồi đến chỗ GV (Session)
+                Distance = Math.Round(CalculateDistance(session.Latitude, session.Longitude, r.Latitude, r.Longitude), 1)
+            });
 
             return Ok(new
             {
@@ -129,7 +178,7 @@ namespace ClassmateQRapi.Controllers
                 session.StartTime,
                 session.EndTime,
                 TotalChecked = records.Count,
-                Records = records
+                Records = resultRecords
             });
         }
 

@@ -10,7 +10,7 @@
         public string Title { get; set; } = null!;
         public string? Description { get; set; }
 
-        public string? FileUrl { get; set; }
+        public ICollection<CourseResourceFile> ResourceFiles { get; set; } = new List<CourseResourceFile>();
         public string? LinkUrl { get; set; }
 
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
