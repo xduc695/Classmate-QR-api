@@ -218,5 +218,41 @@ namespace ClassmateQRapi.Controllers
             await _context.SaveChangesAsync();
             return NoContent();
         }
+
+        [Authorize(Roles = "Teacher,Admin")] // Chỉ giảng viên hoặc Admin mới xem được danh sách
+        [HttpGet("{id:int}/students")]
+        public async Task<ActionResult<IEnumerable<object>>> GetStudentsInClass(int id)
+        {
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+
+            // 1. Kiểm tra lớp có tồn tại không
+            var cls = await _context.ClassSections.FindAsync(id);
+            if (cls == null) return NotFound("Lớp học phần không tồn tại.");
+
+            // 2. Kiểm tra quyền (GV phụ trách hoặc Admin)
+            var roles = await _userManager.GetRolesAsync(await _userManager.FindByIdAsync(userId));
+            bool isAdmin = roles.Contains("Admin");
+
+            if (!isAdmin && cls.TeacherId != userId)
+            {
+                return Forbid(); // 403 Forbidden
+            }
+
+            // 3. Lấy danh sách sinh viên từ bảng Enrollments
+            var students = await _context.Enrollments
+                .Where(e => e.ClassSectionId == id)
+                .Include(e => e.User) // Join bảng User
+                .Select(e => new
+                {
+                    StudentId = e.UserId,
+                    FullName = e.User.FullName,
+                    Email = e.User.Email,
+                    StudentCode = e.User.UserName, // Giả sử UserName là Mã SV
+                                                   // EnrolledDate = e.EnrolledDate
+                })
+                .ToListAsync();
+
+            return Ok(students);
+        }
     }
 }
