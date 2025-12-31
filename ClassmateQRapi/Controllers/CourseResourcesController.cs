@@ -187,5 +187,6 @@ namespace ClassmateQRapi.Controllers
 
             return Ok(new { message = "Đã xóa tài liệu" });
         }
+
     }
 }
