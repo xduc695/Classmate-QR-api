@@ -18,7 +18,6 @@ namespace ClassmateQRapi.Controllers
         {
             _context = context;
         }
-
         // Giảng viên tạo buổi điểm danh -> sinh Code
         [Authorize(Roles = "Teacher,Admin")]
         [HttpPost("sessions")]
@@ -257,4 +256,6 @@ namespace ClassmateQRapi.Controllers
             });
         }
     }
+
 }
+

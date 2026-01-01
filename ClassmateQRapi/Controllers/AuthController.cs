@@ -37,7 +37,6 @@ namespace ClassmateQRapi.Controllers
 
         // ==========================
         //  ĐĂNG KÝ + UPLOAD AVATAR
-        // ==========================
         [HttpPost("register")]
         public async Task<IActionResult> Register([FromForm] RegisterRequest request)
         {
@@ -178,6 +177,8 @@ namespace ClassmateQRapi.Controllers
             if (user == null)
                 return Unauthorized(new { message = "User not found" });
 
+            var roles = await _userManager.GetRolesAsync(user);
+            var roleName = roles.FirstOrDefault() ?? "Student";
             return Ok(new
             {
                 id = user.Id,
@@ -185,10 +186,10 @@ namespace ClassmateQRapi.Controllers
                 fullName = user.FullName,
                 email = user.Email,
                 avatarUrl = user.AvatarUrl,
-                createdAt = user.CreatedAt
+                createdAt = user.CreatedAt,
+                role = roleName
             });
         }
-
         [Authorize]
         [HttpPut("profile")]
         public async Task<IActionResult> UpdateProfile([FromForm] UpdateProfileRequest request)
@@ -304,6 +305,7 @@ namespace ClassmateQRapi.Controllers
 
             return Ok(result);
         }
+
         // ==========================
         //  ĐỔI ROLE USER
         // ==========================
@@ -364,6 +366,7 @@ namespace ClassmateQRapi.Controllers
                 newRole = roleName
             });
         }
+
         // ==========================
         //  XOÁ TÀI KHOẢN
         // ==========================
