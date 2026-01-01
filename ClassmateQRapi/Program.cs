@@ -17,7 +17,8 @@ builder.Services.AddCors(options =>
     options.AddPolicy("AllowAll",
         builder =>
         {
-            builder.AllowAnyOrigin()   // Cho phép mọi nguồn (Web, Mobile...)
+            builder
+                    .AllowAnyOrigin()   // Cho phép mọi nguồn (Web, Mobile...)
                    .AllowAnyMethod()   // Cho phép GET, POST, PUT, DELETE...
                    .AllowAnyHeader();  // Cho phép mọi Header
         });
