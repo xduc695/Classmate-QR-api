@@ -307,6 +307,114 @@ namespace ClassmateQRapi.Controllers
         }
 
         // ==========================
+        //  ADMIN: TẠO TÀI KHOẢN MỚI
+        // ==========================
+        [Authorize(Roles = "Admin")]
+        [HttpPost("admin/create")]
+        public async Task<IActionResult> CreateUserByAdmin([FromForm] AdminCreateUserRequest request)
+        {
+            if (!ModelState.IsValid)
+                return BadRequest(ModelState);
+
+            // Kiểm tra username đã tồn tại chưa
+            var existUser = await _userManager.FindByNameAsync(request.UserName);
+            if (existUser != null)
+                return BadRequest(new { message = "Username already exists" });
+
+            // Kiểm tra email đã tồn tại chưa
+            var existEmail = await _userManager.FindByEmailAsync(request.Email);
+            if (existEmail != null)
+                return BadRequest(new { message = "Email already exists" });
+
+            // Tạo user mới
+            var user = new AppUser
+            {
+                UserName = request.UserName,
+                Email = request.Email,
+                FullName = request.FullName,
+                CreatedAt = DateTime.UtcNow
+            };
+
+            // Tạo user với password
+            var createResult = await _userManager.CreateAsync(user, request.Password);
+            if (!createResult.Succeeded)
+            {
+                return BadRequest(new
+                {
+                    message = "Create user failed",
+                    errors = createResult.Errors.Select(e => e.Description)
+                });
+            }
+
+            // Xử lý upload avatar nếu có
+            if (request.Avatar != null && request.Avatar.Length > 0)
+            {
+                var avatarsFolder = Path.Combine(_env.ContentRootPath, "Avatars");
+                Directory.CreateDirectory(avatarsFolder);
+
+                var ext = Path.GetExtension(request.Avatar.FileName);
+                if (string.IsNullOrEmpty(ext)) ext = ".jpg";
+
+                var fileName = $"{user.Id}{ext}";
+                var filePath = Path.Combine(avatarsFolder, fileName);
+
+                using (var stream = new FileStream(filePath, FileMode.Create))
+                {
+                    await request.Avatar.CopyToAsync(stream);
+                }
+
+                user.AvatarUrl = $"/avatars/{fileName}";
+                await _userManager.UpdateAsync(user);
+            }
+
+            // Gán role cho user
+            var roleName = string.IsNullOrWhiteSpace(request.Role) ? "Student" : request.Role.Trim();
+
+            // Kiểm tra role hợp lệ
+            var allowedRoles = new[] { "Admin", "Teacher", "Student" };
+            if (!allowedRoles.Contains(roleName))
+            {
+                // Nếu role không hợp lệ, xóa user đã tạo
+                await _userManager.DeleteAsync(user);
+                return BadRequest(new { message = "Invalid role. Allowed roles: Admin, Teacher, Student" });
+            }
+
+            // Đảm bảo role tồn tại
+            if (!await _roleManager.RoleExistsAsync(roleName))
+            {
+                await _roleManager.CreateAsync(new IdentityRole(roleName));
+            }
+
+            // Gán role cho user
+            var roleResult = await _userManager.AddToRoleAsync(user, roleName);
+            if (!roleResult.Succeeded)
+            {
+                // Nếu gán role thất bại, xóa user đã tạo
+                await _userManager.DeleteAsync(user);
+                return BadRequest(new
+                {
+                    message = "Assign role failed",
+                    errors = roleResult.Errors.Select(e => e.Description)
+                });
+            }
+
+            return Ok(new
+            {
+                message = "User created successfully",
+                user = new
+                {
+                    id = user.Id,
+                    userName = user.UserName,
+                    fullName = user.FullName,
+                    email = user.Email,
+                    avatarUrl = user.AvatarUrl,
+                    role = roleName,
+                    createdAt = user.CreatedAt
+                }
+            });
+        }
+
+        // ==========================
         //  ĐỔI ROLE USER
         // ==========================
         [Authorize(Roles = "Admin")]
