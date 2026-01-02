@@ -1,4 +1,5 @@
-﻿using ClassMate.Api.DTOs;
+﻿// AttendanceController.cs - Sửa các phương thức
+using ClassMate.Api.DTOs;
 using ClassmateQRapi.Data;
 using ClassmateQRapi.Entities;
 using Microsoft.AspNetCore.Authorization;
@@ -18,6 +19,7 @@ namespace ClassmateQRapi.Controllers
         {
             _context = context;
         }
+
         // Giảng viên tạo buổi điểm danh -> sinh Code
         [Authorize(Roles = "Teacher,Admin")]
         [HttpPost("sessions")]
@@ -30,21 +32,15 @@ namespace ClassmateQRapi.Controllers
 
             var code = Guid.NewGuid().ToString("N").Substring(0, 8).ToUpperInvariant();
 
-            //  SỬA LOGIC THỜI GIAN TẠI ĐÂY
-            // Lấy giờ hiện tại (Server tự quyết định, không tin tưởng Client)
             var now = DateTime.UtcNow;
 
             var session = new AttendanceSession
             {
                 ClassSectionId = request.ClassSectionId,
-
-                // Server tự tính toán thời gian
                 StartTime = now,
-                EndTime = now.AddMinutes(request.Minutes), // Cộng số phút vào giờ hiện tại
-
+                EndTime = now.AddMinutes(request.Minutes),
                 Code = code,
-                Latitude = request.Latitude,
-                Longitude = request.Longitude
+                TeacherLocation = request.TeacherLocation
             };
 
             _context.AttendanceSessions.Add(session);
@@ -56,7 +52,8 @@ namespace ClassmateQRapi.Controllers
                 session.ClassSectionId,
                 session.StartTime,
                 session.EndTime,
-                session.Code
+                session.Code,
+                session.TeacherLocation
             });
         }
 
@@ -98,41 +95,20 @@ namespace ClassmateQRapi.Controllers
                 AttendanceSessionId = session.Id,
                 UserId = userId,
                 CheckedInAt = now,
-
-                Latitude = request.Latitude,
-                Longitude = request.Longitude
+                StudentLocation = request.StudentLocation
             };
 
             _context.AttendanceRecords.Add(record);
             await _context.SaveChangesAsync();
-            // TÍNH KHOẢNG CÁCH TỪ ĐIỂM DANH ĐẾN VỊ TRÍ CỦA GIẢNG VIÊN
-            double finalDistance = Math.Round(CalculateDistance(session.Latitude, session.Longitude, request.Latitude, request.Longitude), 1);
+
+            // Xóa hàm CalculateDistance vì không cần tính khoảng cách nữa
             return Ok(new
             {
                 message = "Check-in success",
-                distance = finalDistance
+                location = record.StudentLocation
             });
         }
-        //hàm tính khoảng cách giữa 2 điểm (lat1, lon1) và (lat2, lon2) theo đơn vị km
-        private double CalculateDistance(double lat1, double lon1, double lat2, double lon2)
-        {
-            // Bán kính trái đất xấp xỉ 6371 km = 6371000 mét
-            double R = 6371000;
 
-            // Chuyển đổi độ sang radian
-            double dLat = (lat2 - lat1) * (Math.PI / 180);
-            double dLon = (lon2 - lon1) * (Math.PI / 180);
-
-            // Áp dụng công thức
-            double a = Math.Sin(dLat / 2) * Math.Sin(dLat / 2) +
-                       Math.Cos(lat1 * (Math.PI / 180)) * Math.Cos(lat2 * (Math.PI / 180)) *
-                       Math.Sin(dLon / 2) * Math.Sin(dLon / 2);
-
-            double c = 2 * Math.Atan2(Math.Sqrt(a), Math.Sqrt(1 - a));
-
-            // Trả về khoảng cách
-            return R * c;
-        }
         // Giảng viên xem lịch sử điểm danh 1 buổi
         [Authorize(Roles = "Teacher,Admin")]
         [HttpGet("sessions/{sessionId:int}/records")]
@@ -153,21 +129,8 @@ namespace ClassmateQRapi.Controllers
                     r.User.FullName,
                     r.User.UserName,
                     r.CheckedInAt,
-                    r.Latitude,
-                    r.Longitude
+                    r.StudentLocation
                 }).ToListAsync();
-            //  TÍNH KHOẢNG CÁCH NGAY TẠI SERVER ĐỂ GỬI VỀ FRONTEND DỄ HIỂN THỊ
-            var resultRecords = records.Select(r => new
-            {
-                r.UserId,
-                r.FullName,
-                r.UserName,
-                r.CheckedInAt,
-                r.Latitude,
-                r.Longitude,
-                // Tính khoảng cách từ chỗ SV ngồi đến chỗ GV (Session)
-                Distance = Math.Round(CalculateDistance(session.Latitude, session.Longitude, r.Latitude, r.Longitude), 1)
-            });
 
             return Ok(new
             {
@@ -176,8 +139,9 @@ namespace ClassmateQRapi.Controllers
                 session.Code,
                 session.StartTime,
                 session.EndTime,
+                session.TeacherLocation,
                 TotalChecked = records.Count,
-                Records = resultRecords
+                Records = records
             });
         }
 
@@ -202,7 +166,9 @@ namespace ClassmateQRapi.Controllers
                     r.AttendanceSession.Code,
                     ClassId = r.AttendanceSession.ClassSectionId,
                     ClassName = r.AttendanceSession.ClassSection.Name,
-                    CourseName = r.AttendanceSession.ClassSection.Course.Name
+                    CourseName = r.AttendanceSession.ClassSection.Course.Name,
+                    TeacherLocation = r.AttendanceSession.TeacherLocation,
+                    StudentLocation = r.StudentLocation
                 })
                 .ToListAsync();
 
@@ -252,10 +218,84 @@ namespace ClassmateQRapi.Controllers
                 alreadyCheckedIn,
                 anyRecords,
                 startTime = session.StartTime,
-                endTime = session.EndTime
+                endTime = session.EndTime,
+                teacherLocation = session.TeacherLocation
+            });
+        }
+
+        [Authorize(Roles = "Teacher,Admin")]
+        [HttpGet("sessions/class/{classSectionId:int}")]
+        public async Task<IActionResult> GetSessionsByClass(int classSectionId)
+        {
+            var sessions = await _context.AttendanceSessions
+                .Where(s => s.ClassSectionId == classSectionId)
+                .OrderByDescending(s => s.StartTime)
+                .Select(s => new
+                {
+                    s.Id,
+                    s.Code,
+                    s.StartTime,
+                    s.EndTime,
+                    s.CreatedAt,
+                    s.TeacherLocation,
+                    CheckedInCount = _context.AttendanceRecords.Count(r => r.AttendanceSessionId == s.Id)
+                })
+                .ToListAsync();
+
+            return Ok(sessions);
+        }
+
+        // Xóa session điểm danh
+        [Authorize(Roles = "Teacher,Admin")]
+        [HttpDelete("sessions/{sessionId:int}")]
+        public async Task<IActionResult> DeleteSession(int sessionId)
+        {
+            var exists = await _context.AttendanceSessions
+                .AnyAsync(s => s.Id == sessionId);
+
+            if (!exists)
+                return NotFound(new { message = "Session not found or already deleted" });
+
+            _context.AttendanceSessions.Remove(new AttendanceSession { Id = sessionId });
+
+            try
+            {
+                await _context.SaveChangesAsync();
+                return Ok(new { message = "Session deleted successfully" });
+            }
+            catch (DbUpdateConcurrencyException)
+            {
+                return Conflict(new
+                {
+                    message = "Session was already deleted by another request"
+                });
+            }
+        }
+
+
+        // Kiểm tra session có còn active không
+        [Authorize]
+        [HttpGet("sessions/{sessionId:int}/status")]
+        public async Task<IActionResult> GetSessionStatus(int sessionId)
+        {
+            var session = await _context.AttendanceSessions.FindAsync(sessionId);
+            if (session == null) return NotFound();
+
+            var now = DateTime.UtcNow;
+            bool isActive = now >= session.StartTime && now <= session.EndTime;
+            bool isExpired = now > session.EndTime;
+
+            return Ok(new
+            {
+                session.Id,
+                session.Code,
+                session.StartTime,
+                session.EndTime,
+                session.TeacherLocation,
+                isActive,
+                isExpired,
+                remainingSeconds = isActive ? (int)(session.EndTime - now).TotalSeconds : 0
             });
         }
     }
-
 }
-

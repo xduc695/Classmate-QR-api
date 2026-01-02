@@ -94,6 +94,20 @@ namespace ClassmateQRapi.Data
        .HasForeignKey(rf => rf.CourseResourceId)
        .OnDelete(DeleteBehavior.Cascade);
 
+            // ✅ AttendanceSession -> AttendanceRecords
+            builder.Entity<AttendanceRecord>()
+                .HasOne(r => r.AttendanceSession)
+                .WithMany()
+                .HasForeignKey(r => r.AttendanceSessionId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            // ✅ AttendanceRecord -> User
+            builder.Entity<AttendanceRecord>()
+                .HasOne(r => r.User)
+                .WithMany()
+                .HasForeignKey(r => r.UserId)
+                .OnDelete(DeleteBehavior.NoAction);
+
         }
 
     }

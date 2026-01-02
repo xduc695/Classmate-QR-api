@@ -1,4 +1,5 @@
-﻿using System.ComponentModel.DataAnnotations;
+﻿// CreateAttendanceSessionRequest.cs
+using System.ComponentModel.DataAnnotations;
 
 namespace ClassMate.Api.DTOs
 {
@@ -9,8 +10,9 @@ namespace ClassMate.Api.DTOs
 
         public int Minutes { get; set; }
 
-        public double Latitude { get; set; }
-        public double Longitude { get; set; }
+        [Required]
+        [StringLength(200)]
+        public string TeacherLocation { get; set; } = null!; // VD: "Phòng A1.201"
     }
 
     public class CheckInRequest
@@ -18,7 +20,8 @@ namespace ClassMate.Api.DTOs
         [Required]
         public string Code { get; set; } = null!;
 
-        public double Latitude { get; set; }
-        public double Longitude { get; set; }
+        [Required]
+        [StringLength(200)]
+        public string StudentLocation { get; set; } = null!; // VD: "Khu giảng đường chính"
     }
 }

@@ -12,7 +12,6 @@
 
         public DateTime CheckedInAt { get; set; } = DateTime.UtcNow;
 
-        public double Latitude { get; set; }
-        public double Longitude { get; set; }
+        public string StudentLocation { get; set; } = null!;
     }
 }

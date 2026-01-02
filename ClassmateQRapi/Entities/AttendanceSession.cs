@@ -15,7 +15,6 @@
 
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 
-        public double Latitude { get; set; }
-        public double Longitude { get; set; }
+        public string TeacherLocation { get; set; } = null!;
     }
 }
