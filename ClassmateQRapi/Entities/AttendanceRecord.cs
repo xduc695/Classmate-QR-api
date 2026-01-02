@@ -1,4 +1,6 @@
-﻿namespace ClassmateQRapi.Entities
+﻿using System.ComponentModel.DataAnnotations;
+
+namespace ClassmateQRapi.Entities
 {
     public class AttendanceRecord
     {
@@ -13,5 +15,9 @@
         public DateTime CheckedInAt { get; set; } = DateTime.UtcNow;
 
         public string StudentLocation { get; set; } = null!;
+
+        [Required]
+        [StringLength(20)]
+        public string Status { get; set; } = "OK";
     }
 }

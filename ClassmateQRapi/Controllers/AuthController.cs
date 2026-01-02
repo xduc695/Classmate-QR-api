@@ -8,6 +8,8 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
 using System.Security.Claims;
+using ClosedXML.Excel;
+using System.Text;
 
 namespace ClassmateQRapi.Controllers
 {

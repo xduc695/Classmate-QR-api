@@ -99,7 +99,7 @@ namespace ClassmateQRapi.Data
                 .HasOne(r => r.AttendanceSession)
                 .WithMany()
                 .HasForeignKey(r => r.AttendanceSessionId)
-                .OnDelete(DeleteBehavior.Cascade);
+                .OnDelete(DeleteBehavior.Restrict);
 
             // ✅ AttendanceRecord -> User
             builder.Entity<AttendanceRecord>()

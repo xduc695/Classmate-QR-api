@@ -1,11 +1,13 @@
 ﻿using ClassMate.Api.DTOs;
 using ClassmateQRapi.Data;
+using ClassmateQRapi.DTOs;
 using ClassmateQRapi.Entities;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
-using System.Security.Claims;
 using Microsoft.EntityFrameworkCore;
+using System.Globalization;
+using System.Security.Claims;
 
 namespace ClassmateQRapi.Controllers
 {
@@ -445,6 +447,111 @@ namespace ClassmateQRapi.Controllers
                 .ToListAsync();
 
             return Ok(students);
+        }
+
+        // Trong ClassSectionsController.cs
+        [Authorize]
+        [HttpGet("{id:int}/sessions")]
+        public async Task<ActionResult<IEnumerable<ClassSessionDto>>> GetClassSessions(int id)
+        {
+            var cls = await _context.ClassSections
+                .Include(c => c.Course)
+                .Include(c => c.Teacher)
+                .FirstOrDefaultAsync(x => x.Id == id);
+
+            if (cls == null) return NotFound();
+
+            // Kiểm tra user có trong lớp không
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            var roles = await _userManager.GetRolesAsync(await _userManager.FindByIdAsync(userId));
+            bool isTeacherOrAdmin = roles.Contains("Teacher") || roles.Contains("Admin");
+
+            if (!isTeacherOrAdmin)
+            {
+                var isEnrolled = await _context.Enrollments
+                    .AnyAsync(e => e.UserId == userId && e.ClassSectionId == id);
+
+                if (!isEnrolled) return Forbid();
+            }
+
+            // Tạo danh sách buổi học
+            var sessions = GenerateClassSessions(cls);
+
+            // Kiểm tra xem buổi học nào đã có điểm danh
+            var attendanceSessions = await _context.AttendanceSessions
+                .Where(s => s.ClassSectionId == id)
+                .ToListAsync();
+
+            var result = sessions.Select(s => new ClassSessionDto
+            {
+                Date = s.Date,
+                StartTime = s.StartTime,
+                EndTime = s.EndTime,
+                DayOfWeek = s.Date.ToString("dddd", new CultureInfo("vi-VN")),
+                Status = GetSessionStatus(s.Date, s.StartTime, s.EndTime),
+                HasAttendanceSession = attendanceSessions.Any(a =>
+                    a.StartTime.Date == s.Date.Date),
+                AttendanceSessionId = attendanceSessions
+                    .FirstOrDefault(a => a.StartTime.Date == s.Date.Date)?.Id,
+                AttendanceSessionCode = attendanceSessions
+                    .FirstOrDefault(a => a.StartTime.Date == s.Date.Date)?.Code
+            }).ToList();
+
+            return Ok(result);
+        }
+
+        private List<ClassSession> GenerateClassSessions(ClassSection classSection)
+        {
+            var sessions = new List<ClassSession>();
+            var currentDate = classSection.StartDate;
+
+            // Danh sách các ngày trong tuần đã chọn (0-6)
+            var studyDays = new List<int>();
+            for (int i = 0; i < 7; i++)
+            {
+                if ((classSection.StudyDays & (1 << i)) != 0)
+                {
+                    studyDays.Add(i);
+                }
+            }
+
+            while (currentDate <= classSection.EndDate)
+            {
+                if (studyDays.Contains((int)currentDate.DayOfWeek))
+                {
+                    sessions.Add(new ClassSession
+                    {
+                        Date = currentDate.Date,
+                        StartTime = classSection.StartTime,
+                        EndTime = classSection.EndTime
+                    });
+                }
+                currentDate = currentDate.AddDays(1);
+            }
+
+            return sessions;
+        }
+
+        private string GetSessionStatus(DateTime date, TimeSpan startTime, TimeSpan endTime)
+        {
+            var now = DateTime.Now;
+            var sessionStart = date.Add(startTime);
+            var sessionEnd = date.Add(endTime);
+
+            if (now < sessionStart)
+                return "upcoming";
+            else if (now >= sessionStart && now <= sessionEnd)
+                return "ongoing";
+            else
+                return "completed";
+        }
+
+        // Helper class
+        public class ClassSession
+        {
+            public DateTime Date { get; set; }
+            public TimeSpan StartTime { get; set; }
+            public TimeSpan EndTime { get; set; }
         }
     }
 }
