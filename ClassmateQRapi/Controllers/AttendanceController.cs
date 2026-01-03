@@ -1,5 +1,6 @@
 ﻿using ClassMate.Api.DTOs;
 using ClassmateQRapi.Data;
+using ClassmateQRapi.DTOs;
 using ClassmateQRapi.Entities;
 using ClosedXML.Excel;
 using Microsoft.AspNetCore.Authorization;
@@ -57,7 +58,7 @@ namespace ClassmateQRapi.Controllers
             });
         }
 
-        // Sinh viên check-in bằng Code (từ QR) - LOGIC ĐƠN GIẢN
+        // Sinh viên check-in bằng Code
         [Authorize(Roles = "Student")]
         [HttpPost("check-in")]
         public async Task<IActionResult> CheckIn([FromBody] CheckInRequest request)
@@ -89,7 +90,7 @@ namespace ClassmateQRapi.Controllers
             if (exist)
                 return BadRequest(new { message = "You have already checked in" });
 
-            // Xác định status dựa trên thời gian - LOGIC ĐƠN GIẢN
+            // Xác định status
             string status;
             string message;
 
@@ -99,18 +100,16 @@ namespace ClassmateQRapi.Controllers
             }
             else if (now > session.EndTime)
             {
-                // Nếu quá thời gian EndTime -> tự động LATE
                 status = "LATE";
                 message = "Check-in success (Late - after session ended)";
             }
             else
             {
-                // Trong khoảng thời gian cho phép -> OK
                 status = "OK";
                 message = "Check-in success";
             }
 
-            // Tạo record với status
+            // Tạo record
             var record = new AttendanceRecord
             {
                 AttendanceSessionId = session.Id,
@@ -149,7 +148,7 @@ namespace ClassmateQRapi.Controllers
                 .Include(r => r.User)
                 .Select(r => new
                 {
-                    r.UserId,
+                    r.UserId, // Dùng UserId làm mã sinh viên
                     r.User.FullName,
                     r.User.UserName,
                     r.CheckedInAt,
@@ -241,7 +240,6 @@ namespace ClassmateQRapi.Controllers
             bool alreadyCheckedIn = false;
             string expectedStatus = "";
 
-            // Xác định expected status
             if (now < session.StartTime)
                 expectedStatus = "NOT_STARTED";
             else if (now > session.EndTime)
@@ -376,6 +374,8 @@ namespace ClassmateQRapi.Controllers
                 }
             });
         }
+
+        // Export attendance to Excel
         [Authorize(Roles = "Teacher,Admin")]
         [HttpGet("sessions/{sessionId:int}/export-excel")]
         public async Task<IActionResult> ExportAttendanceToExcel(int sessionId)
@@ -393,9 +393,10 @@ namespace ClassmateQRapi.Controllers
                 .Include(e => e.User)
                 .Select(e => new
                 {
-                    e.UserId,
+                    e.UserId, // Dùng UserId làm mã sinh viên
                     e.User.UserName,
-                    e.User.FullName
+                    e.User.FullName,
+                    e.User.Email
                 })
                 .ToListAsync();
 
@@ -407,7 +408,8 @@ namespace ClassmateQRapi.Controllers
                 {
                     r.UserId,
                     r.Status,
-                    CheckedInAt = r.CheckedInAt
+                    CheckedInAt = r.CheckedInAt,
+                    r.StudentLocation
                 })
                 .ToListAsync();
 
@@ -420,7 +422,7 @@ namespace ClassmateQRapi.Controllers
             title.Value = $"ATTENDANCE REPORT - Session: {session.Code}";
             title.Style.Font.Bold = true;
             title.Style.Font.FontSize = 16;
-            worksheet.Range(1, 1, 1, 4).Merge();
+            worksheet.Range(1, 1, 1, 6).Merge();
 
             // Thông tin session
             worksheet.Cell(2, 1).Value = "Class:";
@@ -435,7 +437,7 @@ namespace ClassmateQRapi.Controllers
             // Tạo header cho dữ liệu
             var headersRow = 7;
             worksheet.Cell(headersRow, 1).Value = "No.";
-            worksheet.Cell(headersRow, 2).Value = "ID";
+            worksheet.Cell(headersRow, 2).Value = "Student ID"; // Dùng UserId
             worksheet.Cell(headersRow, 3).Value = "Username";
             worksheet.Cell(headersRow, 4).Value = "Full Name";
             worksheet.Cell(headersRow, 5).Value = "Status";
@@ -458,7 +460,7 @@ namespace ClassmateQRapi.Controllers
                 var checkInTime = record?.CheckedInAt;
 
                 worksheet.Cell(currentRow, 1).Value = index;
-                worksheet.Cell(currentRow, 2).Value = student.UserId;
+                worksheet.Cell(currentRow, 2).Value = student.UserId; // Hiển thị UserId
                 worksheet.Cell(currentRow, 3).Value = student.UserName;
                 worksheet.Cell(currentRow, 4).Value = student.FullName;
                 worksheet.Cell(currentRow, 5).Value = status;
@@ -521,6 +523,93 @@ namespace ClassmateQRapi.Controllers
             return File(content,
                 "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
                 fileName);
+        }
+
+        [Authorize(Roles = "Teacher,Admin")]
+        [HttpGet("sessions/{sessionId:int}/attendance-status")]
+        public async Task<IActionResult> GetAttendanceStatus(int sessionId)
+        {
+            var session = await _context.AttendanceSessions
+                .Include(s => s.ClassSection)
+                .FirstOrDefaultAsync(s => s.Id == sessionId);
+
+            if (session == null)
+                return NotFound(new { message = "Session not found" });
+
+            // Tất cả sinh viên trong lớp
+            var allStudents = await _context.Enrollments
+                .Where(e => e.ClassSectionId == session.ClassSectionId)
+                .Include(e => e.User)
+                .Select(e => new
+                {
+                    UserId = e.UserId, // Dùng UserId làm mã sinh viên
+                    Username = e.User.UserName,
+                    FullName = e.User.FullName,
+                    Email = e.User.Email
+                })
+                .ToListAsync();
+
+            // Record điểm danh
+            var attendanceRecords = await _context.AttendanceRecords
+                .Where(r => r.AttendanceSessionId == sessionId)
+                .Select(r => new
+                {
+                    r.UserId,
+                    r.Status,
+                    r.CheckedInAt,
+                    r.StudentLocation
+                })
+                .ToListAsync();
+
+            // Gộp dữ liệu
+            var students = allStudents.Select(student =>
+            {
+                var record = attendanceRecords.FirstOrDefault(r => r.UserId == student.UserId);
+
+                return new
+                {
+                    student.UserId, // UserId dùng làm mã sinh viên
+                    student.Username,
+                    student.FullName,
+                    student.Email,
+                    Status = record?.Status ?? "ABSENT",
+                    CheckedInAt = record?.CheckedInAt,
+                    StudentLocation = record?.StudentLocation,
+                    IsPresent = record != null
+                };
+            }).ToList();
+
+            // Thống kê
+            var presentCount = attendanceRecords.Count;
+            var onTimeCount = attendanceRecords.Count(r => r.Status == "OK");
+            var lateCount = attendanceRecords.Count(r => r.Status == "LATE");
+            var absentCount = allStudents.Count - presentCount;
+
+            return Ok(new
+            {
+                Session = new
+                {
+                    session.Id,
+                    session.Code,
+                    session.StartTime,
+                    session.EndTime,
+                    session.TeacherLocation,
+                    ClassName = session.ClassSection?.Name,
+                    session.ClassSectionId
+                },
+                Statistics = new
+                {
+                    TotalStudents = allStudents.Count,
+                    Present = presentCount,
+                    OnTime = onTimeCount,
+                    Late = lateCount,
+                    Absent = absentCount,
+                    AttendanceRate = allStudents.Count > 0
+                        ? Math.Round(presentCount * 100.0 / allStudents.Count, 1)
+                        : 0
+                },
+                Students = students
+            });
         }
     }
 }

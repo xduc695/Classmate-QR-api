@@ -53,7 +53,6 @@ namespace ClassmateQRapi.Controllers
         }
 
 
-        // Giảng viên/Admin xem sinh viên trong lớp
         [Authorize(Roles = "Teacher,Admin")]
         [HttpGet("class/{classSectionId:int}")]
         public async Task<IActionResult> GetStudentsInClass(int classSectionId)
@@ -76,17 +75,19 @@ namespace ClassmateQRapi.Controllers
 
         // Giảng viên/Admin xoá SV khỏi lớp
         [Authorize(Roles = "Teacher,Admin")]
-        [HttpDelete("{classSectionId:int}/{userId}")]
-        public async Task<IActionResult> RemoveFromClass(int classSectionId, string userId)
+        [HttpDelete("class/{classSectionId:int}/student/{userId}")]
+        public async Task<IActionResult> RemoveStudentFromClass(int classSectionId, string userId)
         {
-            var e = await _context.Enrollments
-                .FirstOrDefaultAsync(x => x.ClassSectionId == classSectionId && x.UserId == userId);
+            var enrollment = await _context.Enrollments
+                .FirstOrDefaultAsync(e => e.ClassSectionId == classSectionId && e.UserId == userId);
 
-            if (e == null) return NotFound();
+            if (enrollment == null)
+                return NotFound(new { message = "Student not found in this class" });
 
-            _context.Enrollments.Remove(e);
+            _context.Enrollments.Remove(enrollment);
             await _context.SaveChangesAsync();
-            return NoContent();
+
+            return Ok(new { message = "Student removed successfully" });
         }
     }
 }
