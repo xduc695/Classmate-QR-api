@@ -29,6 +29,7 @@ builder.Services.AddCors(options =>
 builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseSqlServer(
         builder.Configuration.GetConnectionString("DefaultConnection")));
+builder.Services.AddHttpClient<IAIService, AIService>();
 
 // 2. Identity
 builder.Services.AddIdentityCore<AppUser>(options =>

@@ -12,8 +12,8 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace ClassmateQRapi.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    [Migration("20260101231319_test2")]
-    partial class test2
+    [Migration("20260103193844_test")]
+    partial class test
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -24,6 +24,60 @@ namespace ClassmateQRapi.Migrations
                 .HasAnnotation("Relational:MaxIdentifierLength", 128);
 
             SqlServerModelBuilderExtensions.UseIdentityColumns(modelBuilder);
+
+            modelBuilder.Entity("ClassmateQRapi.Entities.AIQuestion", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<int>("AssignmentId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("CorrectAnswer")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("OptionA")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)")
+                        .HasColumnName("OptionA");
+
+                    b.Property<string>("OptionB")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)")
+                        .HasColumnName("OptionB");
+
+                    b.Property<string>("OptionC")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)")
+                        .HasColumnName("OptionC");
+
+                    b.Property<string>("OptionD")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)")
+                        .HasColumnName("OptionD");
+
+                    b.Property<int>("OrderIndex")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Question")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("AssignmentId");
+
+                    b.ToTable("AIQuestions");
+                });
 
             modelBuilder.Entity("ClassmateQRapi.Entities.AppUser", b =>
                 {
@@ -108,6 +162,12 @@ namespace ClassmateQRapi.Migrations
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
 
+                    b.Property<string>("AIDifficulty")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("AISubject")
+                        .HasColumnType("nvarchar(max)");
+
                     b.Property<int>("ClassSectionId")
                         .HasColumnType("int");
 
@@ -120,6 +180,9 @@ namespace ClassmateQRapi.Migrations
 
                     b.Property<DateTime>("DueDate")
                         .HasColumnType("datetime2");
+
+                    b.Property<bool>("IsAIGenerated")
+                        .HasColumnType("bit");
 
                     b.Property<string>("Title")
                         .IsRequired()
@@ -171,6 +234,11 @@ namespace ClassmateQRapi.Migrations
 
                     b.Property<DateTime>("CheckedInAt")
                         .HasColumnType("datetime2");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
 
                     b.Property<string>("StudentLocation")
                         .IsRequired()
@@ -583,6 +651,17 @@ namespace ClassmateQRapi.Migrations
                     b.ToTable("AspNetUserTokens", (string)null);
                 });
 
+            modelBuilder.Entity("ClassmateQRapi.Entities.AIQuestion", b =>
+                {
+                    b.HasOne("ClassmateQRapi.Entities.Assignment", "Assignment")
+                        .WithMany("AIQuestions")
+                        .HasForeignKey("AssignmentId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Assignment");
+                });
+
             modelBuilder.Entity("ClassmateQRapi.Entities.Assignment", b =>
                 {
                     b.HasOne("ClassmateQRapi.Entities.ClassSection", "ClassSection")
@@ -610,7 +689,7 @@ namespace ClassmateQRapi.Migrations
                     b.HasOne("ClassmateQRapi.Entities.AttendanceSession", "AttendanceSession")
                         .WithMany()
                         .HasForeignKey("AttendanceSessionId")
-                        .OnDelete(DeleteBehavior.Cascade)
+                        .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
                     b.HasOne("ClassmateQRapi.Entities.AppUser", "User")
@@ -778,6 +857,8 @@ namespace ClassmateQRapi.Migrations
 
             modelBuilder.Entity("ClassmateQRapi.Entities.Assignment", b =>
                 {
+                    b.Navigation("AIQuestions");
+
                     b.Navigation("AssignmentFiles");
 
                     b.Navigation("Submissions");

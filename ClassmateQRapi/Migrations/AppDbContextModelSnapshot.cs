@@ -22,6 +22,60 @@ namespace ClassmateQRapi.Migrations
 
             SqlServerModelBuilderExtensions.UseIdentityColumns(modelBuilder);
 
+            modelBuilder.Entity("ClassmateQRapi.Entities.AIQuestion", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<int>("AssignmentId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("CorrectAnswer")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("OptionA")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)")
+                        .HasColumnName("OptionA");
+
+                    b.Property<string>("OptionB")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)")
+                        .HasColumnName("OptionB");
+
+                    b.Property<string>("OptionC")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)")
+                        .HasColumnName("OptionC");
+
+                    b.Property<string>("OptionD")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)")
+                        .HasColumnName("OptionD");
+
+                    b.Property<int>("OrderIndex")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Question")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("AssignmentId");
+
+                    b.ToTable("AIQuestions");
+                });
+
             modelBuilder.Entity("ClassmateQRapi.Entities.AppUser", b =>
                 {
                     b.Property<string>("Id")
@@ -105,6 +159,12 @@ namespace ClassmateQRapi.Migrations
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
 
+                    b.Property<string>("AIDifficulty")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("AISubject")
+                        .HasColumnType("nvarchar(max)");
+
                     b.Property<int>("ClassSectionId")
                         .HasColumnType("int");
 
@@ -117,6 +177,9 @@ namespace ClassmateQRapi.Migrations
 
                     b.Property<DateTime>("DueDate")
                         .HasColumnType("datetime2");
+
+                    b.Property<bool>("IsAIGenerated")
+                        .HasColumnType("bit");
 
                     b.Property<string>("Title")
                         .IsRequired()
@@ -585,6 +648,17 @@ namespace ClassmateQRapi.Migrations
                     b.ToTable("AspNetUserTokens", (string)null);
                 });
 
+            modelBuilder.Entity("ClassmateQRapi.Entities.AIQuestion", b =>
+                {
+                    b.HasOne("ClassmateQRapi.Entities.Assignment", "Assignment")
+                        .WithMany("AIQuestions")
+                        .HasForeignKey("AssignmentId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Assignment");
+                });
+
             modelBuilder.Entity("ClassmateQRapi.Entities.Assignment", b =>
                 {
                     b.HasOne("ClassmateQRapi.Entities.ClassSection", "ClassSection")
@@ -780,6 +854,8 @@ namespace ClassmateQRapi.Migrations
 
             modelBuilder.Entity("ClassmateQRapi.Entities.Assignment", b =>
                 {
+                    b.Navigation("AIQuestions");
+
                     b.Navigation("AssignmentFiles");
 
                     b.Navigation("Submissions");

@@ -22,9 +22,11 @@ namespace ClassMate.Api.DTOs
         public string Title { get; set; } = null!;
         public string Content { get; set; } = null!;
         public List<FileDto> Files { get; set; } = new List<FileDto>();
+        public List<AIQuestionDto> Questions { get; set; } = new List<AIQuestionDto>();
         public DateTime DueDate { get; set; }
         public DateTime CreatedAt { get; set; }
         public int ClassSectionId { get; set; }
+        public bool IsAIGenerated { get; set; } = false;
     }
     public class FileDto
     {

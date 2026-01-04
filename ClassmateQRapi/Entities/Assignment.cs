@@ -16,5 +16,12 @@
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 
         public ICollection<Submission> Submissions { get; set; } = new List<Submission>();
+
+        public bool IsAIGenerated { get; set; } = false;
+        public string? AISubject { get; set; }
+        public string? AIDifficulty { get; set; }
+
+        // Navigation properties
+        public List<AIQuestion> AIQuestions { get; set; } = new List<AIQuestion>();
     }
 }

@@ -24,6 +24,8 @@ namespace ClassmateQRapi.Data
         public DbSet<AssignmentFile> AssignmentFiles { get; set; } = null!;
         public DbSet<SubmissionFile> SubmissionFiles { get; set; } = null!;
         public DbSet<CourseResourceFile> CourseResourceFiles { get; set; } = null!;
+
+        public DbSet<AIQuestion> AIQuestions { get; set; } = null!;
         protected override void OnModelCreating(ModelBuilder builder)
         {
             base.OnModelCreating(builder);
