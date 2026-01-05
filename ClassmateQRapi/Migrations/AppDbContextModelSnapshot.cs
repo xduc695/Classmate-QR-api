@@ -461,6 +461,9 @@ namespace ClassmateQRapi.Migrations
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
 
+                    b.Property<string>("AIQuizResults")
+                        .HasColumnType("nvarchar(max)");
+
                     b.Property<string>("AnswerText")
                         .HasColumnType("nvarchar(max)");
 
@@ -470,7 +473,7 @@ namespace ClassmateQRapi.Migrations
                     b.Property<string>("Feedback")
                         .HasColumnType("nvarchar(max)");
 
-                    b.Property<double?>("Score")
+                    b.Property<double>("Score")
                         .HasColumnType("float");
 
                     b.Property<DateTime>("SubmittedAt")

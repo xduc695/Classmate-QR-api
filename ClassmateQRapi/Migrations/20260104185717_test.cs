@@ -385,9 +385,10 @@ namespace ClassmateQRapi.Migrations
                     AssignmentId = table.Column<int>(type: "int", nullable: false),
                     UserId = table.Column<string>(type: "nvarchar(450)", nullable: false),
                     AnswerText = table.Column<string>(type: "nvarchar(max)", nullable: true),
-                    Score = table.Column<double>(type: "float", nullable: true),
+                    Score = table.Column<double>(type: "float", nullable: false),
                     Feedback = table.Column<string>(type: "nvarchar(max)", nullable: true),
-                    SubmittedAt = table.Column<DateTime>(type: "datetime2", nullable: false)
+                    SubmittedAt = table.Column<DateTime>(type: "datetime2", nullable: false),
+                    AIQuizResults = table.Column<string>(type: "nvarchar(max)", nullable: true)
                 },
                 constraints: table =>
                 {

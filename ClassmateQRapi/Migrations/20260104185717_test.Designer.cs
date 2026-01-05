@@ -12,7 +12,7 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace ClassmateQRapi.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    [Migration("20260103193844_test")]
+    [Migration("20260104185717_test")]
     partial class test
     {
         /// <inheritdoc />
@@ -464,6 +464,9 @@ namespace ClassmateQRapi.Migrations
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
 
+                    b.Property<string>("AIQuizResults")
+                        .HasColumnType("nvarchar(max)");
+
                     b.Property<string>("AnswerText")
                         .HasColumnType("nvarchar(max)");
 
@@ -473,7 +476,7 @@ namespace ClassmateQRapi.Migrations
                     b.Property<string>("Feedback")
                         .HasColumnType("nvarchar(max)");
 
-                    b.Property<double?>("Score")
+                    b.Property<double>("Score")
                         .HasColumnType("float");
 
                     b.Property<DateTime>("SubmittedAt")
