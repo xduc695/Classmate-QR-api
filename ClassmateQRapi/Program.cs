@@ -1,14 +1,15 @@
 ﻿using ClassMate.Api.Middlewares;
 using ClassmateQRapi.Data;
 using ClassmateQRapi.Entities;
+using ClassmateQRapi.Hubs;
 using ClassmateQRapi.Services;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.FileProviders;
 using Microsoft.IdentityModel.Tokens;
-using System.Text;
 using Microsoft.OpenApi.Models;
+using System.Text;
 using System.Threading.RateLimiting;
 var builder = WebApplication.CreateBuilder(args);
 
@@ -141,7 +142,7 @@ builder.Services.AddSwaggerGen(c =>
         }
     });
 });
-
+builder.Services.AddSignalR();
 var app = builder.Build();
 
 app.UseCors("AllowAll");
@@ -195,6 +196,7 @@ app.UseStaticFiles(new StaticFileOptions
         Path.Combine(builder.Environment.ContentRootPath, "CourseMaterials")),
     RequestPath = "/coursematerials"
 });
+app.MapHub<NotificationHub>("/hubs/notification");
 // 9. Rate limiter
 app.UseRateLimiter();
 

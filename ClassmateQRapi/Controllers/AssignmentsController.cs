@@ -2,10 +2,12 @@
 using ClassMate.Api.DTOs;
 using ClassmateQRapi.Data;
 using ClassmateQRapi.Entities;
+using ClassmateQRapi.Hubs;
 using ClassmateQRapi.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.SignalR;
 using Microsoft.EntityFrameworkCore;
 using System.Security.Claims;
 
@@ -19,17 +21,20 @@ namespace ClassmateQRapi.Controllers
         private readonly IWebHostEnvironment _env;
         private readonly UserManager<AppUser> _userManager;
         private readonly IAIService _aiService;
+        private readonly IHubContext<NotificationHub> _hubContext;
 
         public AssignmentsController(
             AppDbContext context,
             IWebHostEnvironment env,
             UserManager<AppUser> userManager,
-            IAIService aiService)
+            IAIService aiService,
+            IHubContext<NotificationHub> hubContext)
         {
             _context = context;
             _env = env;
             _userManager = userManager;
             _aiService = aiService;
+            _hubContext = hubContext;
         }
 
         // =========================================
@@ -182,6 +187,15 @@ namespace ClassmateQRapi.Controllers
 
                 _context.Assignments.Add(assignment);
                 await _context.SaveChangesAsync();
+                await _hubContext.Clients
+                    .Group($"class_{classId}")
+                    .SendAsync("NewAssignment", new
+                    {
+                        assignmentId = assignment.Id,
+                        title = assignment.Title,
+                        dueDate = assignment.DueDate,
+                        isAIGenerated = true
+                    });
 
                 return Ok(new
                 {
